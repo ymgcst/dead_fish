@@ -6,7 +6,7 @@ require("dotenv").config()
 // Glitch起動用サーバー
 http
   .createServer(function (request, response) {
-    if (request.method == "POST") {
+    if (request.method === "POST") {
       var data = ""
       request.on("data", function (chunk) {
         data += chunk
@@ -17,14 +17,14 @@ http
           return
         }
         var dataObject = querystring.parse(data)
-        if (dataObject.type == "wake") {
+        if (dataObject.type === "wake") {
           console.log("Woke up in post")
           response.end()
           return
         }
         response.end()
       })
-    } else if (request.method == "GET") {
+    } else if (request.method === "GET") {
       response.writeHead(200, { "Content-Type": "text/plain" })
       response.end("Discord Bot is active now\n")
     }
@@ -58,8 +58,8 @@ client.on("messageCreate", async (message) => {
   }
 })
 
-// {id, date}
-let dateList = []
+// {userId: Date}
+let dateMap = {}
 
 client.on("voiceStateUpdate", (oldState, newState) => {
   const date = Date.now()
@@ -67,12 +67,8 @@ client.on("voiceStateUpdate", (oldState, newState) => {
     console.log("通話開始記録")
 
     const userId = oldState.member.user.id
-    if (dateList.find((v) => v === userId) === undefined) {
-      dateList.push({
-        id: userId,
-        date,
-      })
-    }
+    dateMap[userId] = date
+    console.log(dateMap)
     return oldState.member.guild.channels.cache
       .get(process.env.TEXT_CHANNEL_ID)
       .send(`**参加** ${oldState.member.user.username}が入室しました。`)
@@ -82,16 +78,24 @@ client.on("voiceStateUpdate", (oldState, newState) => {
     console.log("通話終了記録")
     let text = `**退出** ${newState.member.user.username}が退出しました。`
     const userId = newState.member.user.id
-    const dateItem = dateList.find((v) => v.id === userId)
-    if (dateItem === undefined) {
+    if (dateMap[userId] === undefined) {
       // 通常あり得ないがサーバーダウンなどを考慮してログ出力しておく
       console.log("ERROR 退室者の入室時間が記録されていない")
     } else {
-      const enterDate = dateItem.date
+      const dateItem = dateMap[userId]
+      console.log(dateItem)
+      const enterDate = dateItem
+      console.log(enterDate)
       const srcSec = Math.floor((date - enterDate) / 1000)
+      console.log(srcSec)
       const hours = Math.floor(srcSec / 3600)
+      console.log(hours)
       const minutes = Math.floor((srcSec % 3600) / 60)
+      console.log(minutes)
       text += ` 通話時間：${hours}時間${minutes}分`
+
+      dateMap[userId] = undefined
+      console.log(dateMap)
     }
     return oldState.member.guild.channels.cache.get(process.env.TEXT_CHANNEL_ID).send(text)
   }
